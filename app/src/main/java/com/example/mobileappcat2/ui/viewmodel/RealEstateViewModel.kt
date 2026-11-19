@@ -125,6 +125,7 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // --- Property CRUD Operations ---
+
     fun saveProperty(
         id: Int = 0,
         title: String,
@@ -137,12 +138,33 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            if (title.isBlank() || address.isBlank()) {
-                _snackbarMessage.emit("Property title and address cannot be empty")
+            if (title.isBlank()) {
+                _snackbarMessage.emit("Property title cannot be empty")
                 return@launch
             }
-            if (rent <= 0) {
-                _snackbarMessage.emit("Rent amount must be greater than zero")
+
+            if (address.isBlank()) {
+                _snackbarMessage.emit("Property address cannot be empty")
+                return@launch
+            }
+
+            if (units <= 0) {
+                _snackbarMessage.emit("Number of units must be greater than zero")
+                return@launch
+            }
+
+            if (rent <= 0 || !rent.isFinite()) {
+                _snackbarMessage.emit("Enter a valid rent amount greater than zero")
+                return@launch
+            }
+
+            if (type !in listOf("Apartment", "Single Family", "Commercial", "Villa")) {
+                _snackbarMessage.emit("Please select a valid property type")
+                return@launch
+            }
+
+            if (status !in listOf("Occupied", "Vacant", "Maintenance")) {
+                _snackbarMessage.emit("Please select a valid property status")
                 return@launch
             }
 
@@ -164,9 +186,11 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
                 repository.updateProperty(entity)
                 _snackbarMessage.emit("Property updated successfully!")
             }
+
             onSuccess()
         }
     }
+
 
     fun deleteProperty(property: PropertyEntity) {
         viewModelScope.launch {
