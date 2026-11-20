@@ -9,6 +9,8 @@ import com.example.mobileappcat2.data.local.entity.MaintenanceRequestEntity
 import com.example.mobileappcat2.data.local.entity.PaymentEntity
 import com.example.mobileappcat2.data.local.entity.PropertyEntity
 import com.example.mobileappcat2.data.local.entity.TenantEntity
+import com.example.mobileappcat2.data.remote.RemoteTenantDto
+import com.example.mobileappcat2.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.Flow
 
 class RealEstateRepository(private val database: AppDatabase) {
@@ -45,6 +47,34 @@ class RealEstateRepository(private val database: AppDatabase) {
     suspend fun deleteTenant(tenant: TenantEntity) = tenantDao.deleteTenant(tenant)
 
     suspend fun deleteTenantById(id: Int) = tenantDao.deleteTenantById(id)
+
+    // Remote API Sync (Retrofit + MockAPI)
+    suspend fun syncTenantsFromApi(): Result<Int> {
+        return try {
+            val response = RetrofitClient.apiService.getAllTenants()
+            if (response.isSuccessful) {
+                val remoteList = response.body().orEmpty()
+                remoteList.forEach { dto ->
+                    tenantDao.insertTenant(dto.toTenantEntity())
+                }
+                Result.success(remoteList.size)
+            } else {
+                Result.failure(Exception("API error: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun postTenantToApi(tenant: TenantEntity): Boolean {
+        return try {
+            val dto = RemoteTenantDto.fromTenantEntity(tenant)
+            val response = RetrofitClient.apiService.createTenant(dto)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     // Payments
     fun getAllPayments(): Flow<List<PaymentEntity>> = paymentDao.getAllPayments()
