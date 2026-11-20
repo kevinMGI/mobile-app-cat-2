@@ -50,17 +50,14 @@ fun PropertyFormScreen(
     onBackClick: () -> Unit
 ) {
     val properties by viewModel.allProperties.collectAsState()
+
     val existingProperty = remember(properties, propertyId) {
         properties.find { it.id == propertyId }
     }
 
-    var title by remember(existingProperty) { mutableStateOf(existingProperty?.title ?: "") }
-    var address by remember(existingProperty) { mutableStateOf(existingProperty?.address ?: "") }
-    var propertyType by remember(existingProperty) { mutableStateOf(existingProperty?.propertyType ?: "Apartment") }
-    var unitsCountText by remember(existingProperty) { mutableStateOf(existingProperty?.unitsCount?.toString() ?: "1") }
-    var rentText by remember(existingProperty) { mutableStateOf(existingProperty?.monthlyRent?.let { if (it == 0.0) "" else it.toInt().toString() } ?: "") }
-    var status by remember(existingProperty) { mutableStateOf(existingProperty?.status ?: "Occupied") }
-    var description by remember(existingProperty) { mutableStateOf(existingProperty?.description ?: "") }
+    var title by remember(existingProperty) {
+        mutableStateOf(existingProperty?.title ?: "")
+    }
 
     var titleError by remember { mutableStateOf<String?>(null) }
     var addressError by remember { mutableStateOf<String?>(null) }
@@ -71,19 +68,37 @@ fun PropertyFormScreen(
 
     var typeDropdownExpanded by remember { mutableStateOf(false) }
     var statusDropdownExpanded by remember { mutableStateOf(false) }
+    var hasAttemptedSave by remember { mutableStateOf(false) }
+
+    val invalidUnits = unitsCountText.toIntOrNull()?.let {
+        it <= 0
+    } ?: true
+
+    val invalidRent = rentText.toDoubleOrNull()?.let {
+        it <= 0 || !it.isFinite()
+    } ?: true
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (propertyId == null) "Add New Property" else "Edit Property") },
+                title = {
+                    Text(
+                        if (propertyId == null) "Add New Property"
+                        else "Edit Property"
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 }
             )
         }
     ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -92,11 +107,15 @@ fun PropertyFormScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             Text(
                 text = "Property Information",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                )
             )
 
+            // Property Title
             OutlinedTextField(
                 value = title,
                 onValueChange = {
@@ -108,10 +127,17 @@ fun PropertyFormScreen(
                 isError = titleError != null,
                 supportingText = { titleError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
                 singleLine = true,
+                isError = hasAttemptedSave && title.isBlank(),
+                supportingText = {
+                    if (hasAttemptedSave && title.isBlank()) {
+                        Text("Property title is required")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // Property Address
             OutlinedTextField(
                 value = address,
                 onValueChange = {
@@ -123,29 +149,46 @@ fun PropertyFormScreen(
                 isError = addressError != null,
                 supportingText = { addressError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
                 singleLine = true,
+                isError = hasAttemptedSave && address.isBlank(),
+                supportingText = {
+                    if (hasAttemptedSave && address.isBlank()) {
+                        Text("Property address is required")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
             ExposedDropdownMenuBox(
                 expanded = typeDropdownExpanded,
-                onExpandedChange = { typeDropdownExpanded = !typeDropdownExpanded }
+                onExpandedChange = {
+                    typeDropdownExpanded = !typeDropdownExpanded
+                }
             ) {
                 OutlinedTextField(
                     value = propertyType,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Property Type") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeDropdownExpanded) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = typeDropdownExpanded
+                        )
+                    },
                     modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                        .menuAnchor(
+                            MenuAnchorType.PrimaryNotEditable,
+                            true
+                        )
                         .fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 ExposedDropdownMenu(
                     expanded = typeDropdownExpanded,
-                    onDismissRequest = { typeDropdownExpanded = false }
+                    onDismissRequest = {
+                        typeDropdownExpanded = false
+                    }
                 ) {
                     typeOptions.forEach { option ->
                         DropdownMenuItem(
@@ -159,6 +202,7 @@ fun PropertyFormScreen(
                 }
             }
 
+            // Units and Monthly Rent
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -167,7 +211,15 @@ fun PropertyFormScreen(
                     value = unitsCountText,
                     onValueChange = { unitsCountText = it },
                     label = { Text("Number of Units") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    isError = hasAttemptedSave && invalidUnits,
+                    supportingText = {
+                        if (hasAttemptedSave && invalidUnits) {
+                            Text("Enter a valid number greater than zero")
+                        }
+                    },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp)
@@ -191,23 +243,34 @@ fun PropertyFormScreen(
 
             ExposedDropdownMenuBox(
                 expanded = statusDropdownExpanded,
-                onExpandedChange = { statusDropdownExpanded = !statusDropdownExpanded }
+                onExpandedChange = {
+                    statusDropdownExpanded = !statusDropdownExpanded
+                }
             ) {
                 OutlinedTextField(
                     value = status,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Property Status") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = statusDropdownExpanded
+                        )
+                    },
                     modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                        .menuAnchor(
+                            MenuAnchorType.PrimaryNotEditable,
+                            true
+                        )
                         .fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 ExposedDropdownMenu(
                     expanded = statusDropdownExpanded,
-                    onDismissRequest = { statusDropdownExpanded = false }
+                    onDismissRequest = {
+                        statusDropdownExpanded = false
+                    }
                 ) {
                     statusOptions.forEach { option ->
                         DropdownMenuItem(
@@ -221,11 +284,16 @@ fun PropertyFormScreen(
                 }
             }
 
+            // Description
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
                 label = { Text("Description & Notes") },
-                placeholder = { Text("Enter details about amenities, parking, security, etc.") },
+                placeholder = {
+                    Text(
+                        "Enter details about amenities, parking, security, etc."
+                    )
+                },
                 minLines = 3,
                 maxLines = 5,
                 modifier = Modifier.fillMaxWidth(),
@@ -234,6 +302,7 @@ fun PropertyFormScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Save or Update Property
             Button(
                 onClick = {
                     val tRes = InputValidator.validatePropertyName(title)
@@ -265,11 +334,22 @@ fun PropertyFormScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null)
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null
+                )
+
                 Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
-                    text = if (existingProperty == null) "Save Property" else "Update Property",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    text = if (existingProperty == null) {
+                        "Save Property"
+                    } else {
+                        "Update Property"
+                    },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
                 )
             }
         }
