@@ -20,6 +20,13 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
     init {
         val database = AppDatabase.getDatabase(application)
         repository = RealEstateRepository(database)
+        syncTenantsFromApi()
+    }
+
+    fun syncTenantsFromApi() {
+        viewModelScope.launch {
+            repository.syncTenantsFromApi()
+        }
     }
 
     // Search and Filter State
@@ -191,7 +198,6 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-
     fun deleteProperty(property: PropertyEntity) {
         viewModelScope.launch {
             repository.deleteProperty(property)
@@ -248,7 +254,12 @@ class RealEstateViewModel(application: Application) : AndroidViewModel(applicati
 
             if (id == 0) {
                 repository.insertTenant(entity)
-                _snackbarMessage.emit("Tenant registered successfully!")
+                val synced = repository.postTenantToApi(entity)
+                if (synced) {
+                    _snackbarMessage.emit("Tenant registered & synced to cloud!")
+                } else {
+                    _snackbarMessage.emit("Tenant registered locally!")
+                }
             } else {
                 repository.updateTenant(entity)
                 _snackbarMessage.emit("Tenant details updated!")
