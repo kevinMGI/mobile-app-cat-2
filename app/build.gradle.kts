@@ -5,14 +5,12 @@ plugins {
 }
 
 android {
-    namespace = "com.example.realestatemanagementsystem"
-    compileSdk {
-        version = release(37)
-    }
+    namespace = "com.example.mobileappcat2"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.realestatemanagementsystem"
-        minSdk = 26
+        applicationId = "com.example.mobileappcat2"
+        minSdk = 24
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"

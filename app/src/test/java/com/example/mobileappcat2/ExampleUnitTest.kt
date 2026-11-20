@@ -1,4 +1,4 @@
-package com.example.realestatemanagementsystem
+package com.example.mobileappcat2
 
 import org.junit.Test
 
